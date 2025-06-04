@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App de Compatibilidad</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .app-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .navbar {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+        }
+        
+        .navbar h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #00b894, #00a085);
+            color: white;
+        }
+        
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            width: 100%;
+            max-width: 800px;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .alert {
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .grid {
+            display: grid;
+            gap: 1rem;
+        }
+        
+        .grid-2 {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .grid-3 {
+            grid-template-columns: repeat(3, 1fr);
+        }
+        
+        .user-card {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .user-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .compatibility-score {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+            text-align: center;
+            margin: 1rem 0;
+        }
+        
+        .question-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .admin-section {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+        }
+        
+        .admin-card {
+            background: rgba(255, 255, 255, 0.95);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        
+        .table th,
+        .table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .table th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .badge-success {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 1rem;
+            }
+            
+            .card {
+                padding: 1rem;
+            }
+            
+            .grid-2,
+            .grid-3 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="app-container" :class="{ 'admin-section': isAdmin }">
+            <!-- Navbar -->
+            <nav class="navbar">
+                <h1>💕 App de Compatibilidad</h1>
+                <div class="nav-buttons" v-if="currentUser">
+                    <span v-if="isAdmin" class="badge badge-warning">👑 Admin</span>
+                    <span>Hola, {{ currentUser.nombre || currentUser.email }}</span>
+                    <button @click="logout" class="btn btn-secondary">Cerrar Sesión</button>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="main-content">
+                <!-- Loading -->
+                <div v-if="loading" class="loading">
+                    <div class="spinner"></div>
+                    <p>Cargando...</p>
+                </div>
+
+                <!-- Login/Register -->
+                <div v-else-if="!currentUser" class="card">
+                    <div v-if="showLogin">
+                        <h2>Iniciar Sesión</h2>
+                        <div v-if="message" :class="['alert', messageType === 'success' ? 'alert-success' : 'alert-error']">
+                            {{ message }}
+                        </div>
+                        <form @submit.prevent="login">
+                            <div class="form-group">
+                                <label>Email:</label>
+                                <input v-model="loginForm.email" type="email" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Contraseña:</label>
+                                <input v-model="loginForm.password" type="password" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <button type="submit" class="btn btn-primary">Iniciar Sesión</button>
+                                <button @click="showLogin = false" type="button" class="btn btn-secondary">¿No tienes cuenta?</button>
+                            </div>
+                        </form>
+                        <hr>
+                        <button @click="loginAsAdmin" class="btn btn-danger">Acceso Administrador</button>
+                    </div>
+
+                    <div v-else>
+                        <h2>Registro</h2>
+                        <div v-if="message" :class="['alert', messageType === 'success' ? 'alert-success' : 'alert-error']">
+                            {{ message }}
+                        </div>
+                        <form @submit.prevent="register">
+                            <div class="grid grid-2">
+                                <div class="form-group">
+                                    <label>Nombre:</label>
+                                    <input v-model="registerForm.nombre" type="text" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Email:</label>
+                                    <input v-model="registerForm.email" type="email" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Contraseña:</label>
+                                <input v-model="registerForm.password" type="password" class="form-control" required>
+                            </div>
+                            <div class="grid grid-2">
+                                <div class="form-group">
+                                    <label>Fecha de Nacimiento:</label>
+                                    <input v-model="registerForm.fecha_nacimiento" type="date" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Género:</label>
+                                    <select v-model="registerForm.genero" class="form-control" required>
+                                        <option value="">Seleccionar...</option>
+                                        <option value="masculino">Masculino</option>
+                                        <option value="femenino">Femenino</option>
+                                        <option value="no_binario">No binario</option>
+                                        <option value="prefiero_no_decir">Prefiero no decir</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Ubicación:</label>
+                                <input v-model="registerForm.ubicacion" type="text" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <button type="submit" class="btn btn-primary">Registrarse</button>
+                                <button @click="showLogin = true" type="button" class="btn btn-secondary">¿Ya tienes cuenta?</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Admin Dashboard -->
+                <div v-else-if="isAdmin" class="card admin-card">
+                    <h2>Panel de Administración</h2>
+                    
+                    <!-- Admin Navigation -->
+                    <div class="nav-buttons" style="margin-bottom: 2rem;">
+                        <button @click="adminView = 'usuarios'" :class="['btn', adminView === 'usuarios' ? 'btn-primary' : 'btn-secondary']">
+                            Usuarios
+                        </button>
+                        <button @click="adminView = 'preguntas'" :class="['btn', adminView === 'preguntas' ? 'btn-primary' : 'btn-secondary']">
+                            Preguntas
+                        </button>
+                        <button @click="adminView = 'respuestas'" :class="['btn', adminView === 'respuestas' ? 'btn-primary' : 'btn-secondary']">
+                            Respuestas
+                        </button>
+                        <button @click="adminView = 'compatibilidades'" :class="['btn', adminView === 'compatibilidades' ? 'btn-primary' : 'btn-secondary']">
+                            Compatibilidades
+                        </button>
+                    </div>
+
+                    <!-- Usuarios Admin -->
+                    <div v-if="adminView === 'usuarios'">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3>Gestión de Usuarios</h3>
+                            <button @click="showCreateUserForm = !showCreateUserForm" class="btn btn-success">
+                                {{ showCreateUserForm ? 'Cancelar' : 'Crear Usuario' }}
+                            </button>
+                        </div>
+
+                        <!-- Crear Usuario Form -->
+                        <div v-if="showCreateUserForm" class="question-card">
+                            <h4>Crear Nuevo Usuario</h4>
+                            <div v-if="message" :class="['alert', messageType === 'success' ? 'alert-success' : 'alert-error']">
+                                {{ message }}
+                            </div>
+                            <form @submit.prevent="createUser">
+                                <div class="grid grid-2">
+                                    <div class="form-group">
+                                        <label>Nombre:</label>
+                                        <input v-model="newUser.nombre" type="text" class="form-control" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Email:</label>
+                                        <input v-model="newUser.email" type="email" class="form-control" required>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Contraseña:</label>
+                                    <input v-model="newUser.contraseña" type="password" class="form-control" required>
+                                </div>
+                                <div class="grid grid-2">
+                                    <div class="form-group">
+                                        <label>Fecha de Nacimiento:</label>
+                                        <input v-model="newUser.fecha_nacimiento" type="date" class="form-control" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Género:</label>
+                                        <select v-model="newUser.genero" class="form-control" required>
+                                            <option value="">Seleccionar...</option>
+                                            <option value="masculino">Masculino</option>
+                                            <option value="femenino">Femenino</option>
+                                            <option value="no_binario">No binario</option>
+                                            <option value="prefiero_no_decir">Prefiero no decir</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Ubicación:</label>
+                                    <input v-model="newUser.ubicacion" type="text" class="form-control" required>
+                                </div>
+                                <button type="submit" class="btn btn-success">Crear Usuario</button>
+                            </form>
+                        </div>
+
+                        <!-- Lista de Usuarios -->
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                    <th>Email</th>
+                                    <th>Género</th>
+                                    <th>Ubicación</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="user in users" :key="user.id_usuario">
+                                    <td>{{ user.id_usuario }}</td>
+                                    <td>{{ user.nombre }}</td>
+                                    <td>{{ user.email }}</td>
+                                    <td>{{ user.genero }}</td>
+                                    <td>{{ user.ubicacion }}</td>
+                                    <td>
+                                        <button @click="deleteUser(user.id_usuario)" class="btn btn-danger" style="font-size: 0.8rem;">
+                                            Eliminar
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Preguntas Admin -->
+                    <div v-if="adminView === 'preguntas'">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3>Gestión de Preguntas</h3>
+                            <button @click="showCreateQuestionForm = !showCreateQuestionForm" class="btn btn-success">
+                                {{ showCreateQuestionForm ? 'Cancelar' : 'Crear Pregunta' }}
+                            </button>
+                        </div>
+
+                        <!-- Crear Pregunta Form -->
+                        <div v-if="showCreateQuestionForm" class="question-card">
+                            <h4>Crear Nueva Pregunta</h4>
+                            <div v-if="message" :class="['alert', messageType === 'success' ? 'alert-success' : 'alert-error']">
+                                {{ message }}
+                            </div>
+                            <form @submit.prevent="createQuestion">
+                                <div class="form-group">
+                                    <label>Texto de la Pregunta:</label>
+                                    <textarea v-model="newQuestion.texto" class="form-control" rows="3" required></textarea>
+                                </div>
+                                <div class="grid grid-3">
+                                    <div class="form-group">
+                                        <label>Tipo:</label>
+                                        <select v-model="newQuestion.tipo" class="form-control" required>
+                                            <option value="">Seleccionar...</option>
+                                            <option value="binaria">Binaria</option>
+                                            <option value="multiple">Múltiple</option>
+                                            <option value="escala">Escala</option>
+                                            <option value="texto">Texto</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Categoría:</label>
+                                        <select v-model="newQuestion.categoria" class="form-control" required>
+                                            <option value="">Seleccionar...</option>
+                                            <option value="valores">Valores</option>
+                                            <option value="intereses">Intereses</option>
+                                            <option value="estilo_vida">Estilo de Vida</option>
+                                            <option value="personalidad">Personalidad</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Peso:</label>
+                                        <input v-model.number="newQuestion.peso" type="number" step="0.1" min="0.1" max="10" class="form-control" required>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-success">Crear Pregunta</button>
+                            </form>
+                        </div>
+
+                        <!-- Lista de Preguntas -->
+                        <div class="grid">
+                            <div v-for="question in adminQuestions" :key="question.id_pregunta" class="question-card">
+                                <h4>{{ question.texto }}</h4>
+                                <div class="grid grid-3" style="margin-top: 1rem;">
+                                    <span class="badge badge-success">{{ question.tipo }}</span>
+                                    <span class="badge badge-warning">{{ question.categoria }}</span>
+                                    <span class="badge badge-success">Peso: {{ question.peso }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Respuestas Admin -->
+                    <div v-if="adminView === 'respuestas'">
+                        <h3>Respuestas de Usuarios</h3>
+                        <div class="form-group">
+                            <label>Filtrar por Usuario ID:</label>
+                            <input v-model.number="filterUserId" @input="loadResponses" type="number" class="form-control" placeholder="ID del usuario (opcional)">
+                        </div>
+                        
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID Respuesta</th>
+                                    <th>Usuario ID</th>
+                                    <th>Pregunta ID</th>
+                                    <th>Respuesta</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="response in responses" :key="response.id_respuesta">
+                                    <td>{{ response.id_respuesta }}</td>
+                                    <td>{{ response.id_usuario }}</td>
+                                    <td>{{ response.id_pregunta }}</td>
+                                    <td>{{ response.respuesta }}</td>
+                                    <td>
+                                        <button @click="deleteResponse(response.id_respuesta)" class="btn btn-danger" style="font-size: 0.8rem;">
+                                            Eliminar
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Compatibilidades Admin -->
+                    <div v-if="adminView === 'compatibilidades'">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3>Compatibilidades del Sistema</h3>
+                            <button @click="calculateMassiveCompatibility" class="btn btn-success">
+                                Calcular Compatibilidades Masivas
+                            </button>
+                        </div>
+                        
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Usuario Origen</th>
+                                    <th>Usuario Comparado</th>
+                                    <th>Compatibilidad</th>
+                                    <th>Fecha</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="compatibility in compatibilities" :key="compatibility.id_resultado">
+                                    <td>{{ compatibility.id_usuario_origen }}</td>
+                                    <td>{{ compatibility.id_usuario_comparado }}</td>
+                                    <td>
+                                        <span class="compatibility-score" style="font-size: 1rem;">
+                                            {{ compatibility.porcentaje_compatibilidad.toFixed(1) }}%
+                                        </span>
+                                    </td>
+                                    <td>{{ formatDate(compatibility.created_at) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- User Dashboard -->
+                <div v-else class="card">
+                    <h2>Mi Dashboard</h2>
+                    
+                    <!-- User Navigation -->
+                    <div class="nav-buttons" style="margin-bottom: 2rem;">
+                        <button @click="userView = 'preguntas'" :class="['btn', userView === 'preguntas' ? 'btn-primary' : 'btn-secondary']">
+                            Responder Preguntas
+                        </button>
+                        <button @click="userView = 'compatibilidades'" :class="['btn', userView === 'compatibilidades' ? 'btn-primary' : 'btn-secondary']">
+                            Mis Compatibilidades
+                        </button>
+                        <button @click="userView = 'matches'" :class="['btn', userView === 'matches' ? 'btn-primary' : 'btn-secondary']">
+                            Mejores Matches
+                        </button>
+                    </div>
+
+                    <!-- Responder Preguntas -->
+                    <div v-if="userView === 'preguntas'">
+                        <h3>Responder Preguntas de Compatibilidad</h3>
+                        <div v-if="message" :class="['alert', messageType === 'success' ? 'alert-success' : 'alert-error']">
+                            {{ message }}
+                        </div>
+                        
+                        <div v-for="question in questions" :key="question.id_pregunta" class="question-card">
+                            <h4>{{ question.texto }}</h4>
+                            <div class="grid grid-2" style="margin: 1rem 0;">
+                                <span class="badge badge-success">{{ question.categoria }}</span>
+                                <span class="badge badge-warning">Peso: {{ question.peso }}</span>
+                            </div>
+                            
+                            <!-- Respuesta Binaria -->
+                            <div v-if="question.tipo === 'binaria'">
+                                <label>
+                                    <input type="radio" :name="'q_' + question.id_pregunta" value="si" 
+                                           v-model="userAnswers[question.id_pregunta]" @change="saveAnswer(question.id_pregunta)">
+                                    Sí
+                                </label>
+                                <label style="margin-left: 1rem;">
+                                    <input type="radio" :name="'q_' + question.id_pregunta" value="no" 
+                                           v-model="userAnswers[question.id_pregunta]" @change="saveAnswer(question.id_pregunta)">
+                                    No
+                                </label>
+                            </div>
+                            
+                            <!-- Respuesta Escala -->
+                            <div v-else-if="question.tipo === 'escala'">
+                                <input type="range" min="1" max="5" 
+                                       v-model="userAnswers[question.id_pregunta]" 
+                                       @change="saveAnswer(question.id_pregunta)" 
+                                       class="form-control">
+                                <div style="text-align: center; margin-top: 0.5rem;">
+                                    Valor: {{ userAnswers[question.id_pregunta] || 3 }}
+                                </div>
+                            </div>
+                            
+                            <!-- Respuesta Texto -->
+                            <div v-else>
+                                <textarea v-model="userAnswers[question.id_pregunta]" 
+                                         @blur="saveAnswer(question.id_pregunta)" 
+                                         class="form-control" 
+                                         rows="3" 
+                                         placeholder="Escribe tu respuesta..."></textarea>
+                            </div>
+                            
+                            <div v-if="savedAnswers[question.id_pregunta]" style="color: green; margin-top: 0.5rem;">
+                                ✓ Respuesta guardada
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mis Compatibilidades -->
+                    <div v-if="userView === 'compatibilidades'">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3>Calcular Compatibilidad</h3>
+                        </div>
+                        
+                        <div class="question-card">
+                            <h4>Calcular compatibilidad con otro usuario</h4>
+                            <div class="form-group">
+                                <label>ID del Usuario:</label>
+                                <input v-model.number="targetUserId" type="number" class="form-control" placeholder="Ingresa el ID del usuario">
+                            </div>
+                            <button @click="calculateCompatibility" class="btn btn-primary">Calcular Compatibilidad</button>
+                        </div>
+
+                        <div v-if="compatibilityResult" class="question-card">
+                            <h4>Resultado de Compatibilidad</h4>
+                            <div class="compatibility-score">
+                                {{ compatibilityResult.porcentaje_compatibilidad }}%
+                            </div>
+                            <h5>Detalles del Cálculo:</h5>
+                            <div v-for="detail in compatibilityResult.detalles_calculo" :key="detail.pregunta_id" style="margin-bottom: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 5px;">
+                                <strong>{{ detail.pregunta_texto }}</strong><br>
+                                <small>Tu respuesta: {{ detail.respuesta_usuario1 }}</small><br>
+                                <small>Su respuesta: {{ detail.respuesta_usuario2 }}</small><br>
+                                <small>Coincidencia: {{ (detail.coincidencia * 100).toFixed(1) }}% (Peso: {{ detail.peso }})</small>
+                            </div>
+                        </div>
+
+                        <h4>Mis Compatibilidades Guardadas</h4>
+			<div class="grid grid-2">
+    			<div v-for="compat in storedCompatibilities" :key="compat.id_resultado" class="user-card">
+        			<h4>Usuario ID: {{ compat.id_usuario_comparado }}</h4>
+        			<p><strong>Compatibilidad:</strong> {{ compat.porcentaje_compatibilidad.toFixed(1) }}%</p>
+        			<p><strong>Fecha:</strong> {{ formatDate(compat.created_at) }}</p>
+        			<button @click="viewDetailedCompatibility(compat.id_usuario_comparado)" class="btn btn-secondary" style="margin-top: 0.5rem;">
+            			Ver Detalles
+        			</button>
+    			</div>
+		</div>
+
+<!-- Mejores Matches -->
+                    <div v-if="userView === 'matches'">
+                        <h3>Mis Mejores Matches</h3>
+                        <div class="grid grid-2">
+                            <div v-for="match in bestMatches" :key="match.id_usuario_comparado" class="user-card">
+                                <h4>{{ match.nombre }}</h4>
+                                <p>Email: {{ match.email }}</p>
+                                <p>Compatibilidad: {{ match.porcentaje_compatibilidad.toFixed(1) }}%</p>
+                                <button @click="viewDetailedCompatibility(match.id_usuario_comparado)" class="btn btn-secondary" style="margin-top: 0.5rem;">
+                                    Ver Detalles
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="./app.js"></script>
