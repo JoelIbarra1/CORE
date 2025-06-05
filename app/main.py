@@ -1,4 +1,3 @@
-# main.py
 from fastapi import FastAPI, HTTPException, Depends, status, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
@@ -24,9 +23,9 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # O ["http://localhost:5173"] si usas Vite
+    allow_origins=["*"],  
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["*"], 
     allow_headers=["*"],
 )
 
@@ -301,7 +300,7 @@ def authenticate_user(email: str, password: str):
         return False
     if not verify_password(password, user["contraseña_hash"]):
         return False
-    return dict(user)  # ✅ Esto es lo que necesitas
+    return dict(user)  
 
 
 def authenticate_admin(email: str, password: str):
@@ -433,7 +432,7 @@ def calcular_coincidencia_por_tipo(respuesta1: str, respuesta2: str, tipo: str) 
             val1 = float(respuesta1)
             val2 = float(respuesta2)
             
-            # Asume escala de 1 a 5 (puedes ajustar esto)
+            # Asume escala de 1 a 5 
             rango_maximo = 4.0  # 5 - 1 = 4
             diferencia = abs(val1 - val2)
             
@@ -441,28 +440,6 @@ def calcular_coincidencia_por_tipo(respuesta1: str, respuesta2: str, tipo: str) 
         except:
             return 0.0
     
-    elif tipo == "texto":
-        # Respuestas de texto: coincidencia básica por similitud de palabras
-        try:
-            palabras1 = set(respuesta1.lower().split())
-            palabras2 = set(respuesta2.lower().split())
-            
-            if not palabras1 and not palabras2:
-                return 1.0
-            if not palabras1 or not palabras2:
-                return 0.0
-            
-            interseccion = len(palabras1.intersection(palabras2))
-            union = len(palabras1.union(palabras2))
-            
-            return interseccion / union if union > 0 else 0.0
-        except:
-            return 1.0 if respuesta1.lower() == respuesta2.lower() else 0.0
-    
-    else:
-        # Tipo desconocido, tratar como binaria
-        return 1.0 if respuesta1.lower() == respuesta2.lower() else 0.0
-
 def guardar_resultado_compatibilidad(usuario1_id: int, usuario2_id: int, porcentaje: float):
     """
     Guarda el resultado de compatibilidad en la base de datos
@@ -538,7 +515,7 @@ async def login_user(user_credentials: UserLogin):
         "access_token": access_token,
         "token_type": "bearer",
         "user_type": "user",
-        "user_id": user["id_usuario"]  # <--- Asegúrate de incluir esto
+        "user_id": user["id_usuario"] 
     }
 
 @app.post("/admin/login", response_model=Token)
@@ -722,7 +699,7 @@ async def delete_respuesta_usuario(respuesta_id: int, admin = Depends(get_curren
 
 # Rutas para usuarios regulares
 @app.get("/preguntas", response_model=List[Pregunta])
-async def get_preguntas_for_user(current_user_data = Depends(get_current_user)):
+async def get_preguntas_for_user():
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM preguntas ORDER BY categoria, peso DESC")
@@ -730,9 +707,11 @@ async def get_preguntas_for_user(current_user_data = Depends(get_current_user)):
         return [Pregunta(**dict(pregunta)) for pregunta in preguntas]
 
 @app.post("/respuestas", response_model=dict)
-async def create_user_respuesta(respuesta: RespuestaUsuarioCreate, current_user_data = Depends(get_current_user)):
-    user = current_user_data["user"]
-    respuesta.id_usuario = user["id_usuario"]
+async def create_user_respuesta(respuesta: RespuestaUsuarioCreate):
+    # Como no hay autenticación, debes asegurarte de que id_usuario esté en el request
+    # O asignar un usuario por defecto
+    if not respuesta.id_usuario:
+        respuesta.id_usuario = 1  # Usuario por defecto
     
     with get_db() as conn:
         cursor = conn.cursor()
@@ -746,12 +725,11 @@ async def create_user_respuesta(respuesta: RespuestaUsuarioCreate, current_user_
         except sqlite3.IntegrityError:
             raise HTTPException(status_code=400, detail="Error al guardar la respuesta")
 
-@app.get("/mis-respuestas", response_model=List[RespuestaUsuario])
-async def get_my_respuestas(current_user_data = Depends(get_current_user)):
-    user = current_user_data["user"]
+@app.get("/mis-respuestas/{id_usuario}", response_model=List[RespuestaUsuario])
+async def get_my_respuestas(id_usuario: int):
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM respuestas_usuario WHERE id_usuario = ?", (user["id_usuario"],))
+        cursor.execute("SELECT * FROM respuestas_usuario WHERE id_usuario = ?", (id_usuario,))
         respuestas = cursor.fetchall()
         return [RespuestaUsuario(**dict(respuesta)) for respuesta in respuestas]
 

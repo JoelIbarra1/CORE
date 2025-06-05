@@ -9,19 +9,20 @@
       }">♥</div>
     </div>
 
-    <div class="login-card">
+    <div class="login-card" :class="{ 'expanded': mostrarPreguntas }">
       <!-- Header con logo y título -->
       <div class="header">
         <div class="logo">
           <div class="heart-logo">💕</div>
         </div>
         <h1 class="app-title">LoveMatch</h1>
-        <p class="subtitle">Encuentra tu alma gemela</p>
+        <p class="subtitle">{{ mostrarPreguntas ? 'Cuéntanos más sobre ti' : 'Encuentra tu alma gemela' }}</p>
       </div>
 
       <!-- Contenido del formulario -->
       <div class="form-container">
-        <div class="toggle-buttons">
+        <!-- Toggle buttons solo si no estamos en el modo preguntas -->
+        <div v-if="!mostrarPreguntas" class="toggle-buttons">
           <button 
             :class="['toggle-btn', { active: modoLogin }]"
             @click="modoLogin = true"
@@ -37,7 +38,7 @@
         </div>
 
         <!-- Formulario de Login -->
-        <div v-if="modoLogin" class="form-section login-form">
+        <div v-if="modoLogin && !mostrarPreguntas" class="form-section login-form">
           <div class="input-group">
             <div class="input-wrapper">
               <span class="input-icon">📧</span>
@@ -79,7 +80,7 @@
         </div>
 
         <!-- Formulario de Registro -->
-        <div v-else class="form-section register-form">
+        <div v-else-if="!modoLogin && !mostrarPreguntas" class="form-section register-form">
           <div class="input-group">
             <div class="input-wrapper">
               <span class="input-icon">👤</span>
@@ -151,9 +152,137 @@
           </div>
 
           <div class="button-group">
-            <button @click="registerUser" class="primary-btn">
-              <span>Crear Cuenta</span>
+            <button @click="continueToQuestions" class="primary-btn">
+              <span>Continuar</span>
               <div class="btn-glow"></div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Sección de Preguntas -->
+        <div v-else-if="mostrarPreguntas" class="form-section questions-form">
+          <div class="progress-bar">
+            <div class="progress-fill" :style="{ width: progressPercentage + '%' }"></div>
+          </div>
+          
+          <div class="question-counter">
+            Pregunta {{ preguntaActualIndex + 1 }} de {{ preguntas.length }}
+          </div>
+
+          <div v-if="preguntaActual" class="question-card">
+            <h3 class="question-title">{{ preguntaActual.texto }}</h3>
+            <div class="question-category">{{ getCategoryLabel(preguntaActual.categoria) }}</div>
+            
+            <!-- Pregunta binaria (sí/no) -->
+            <div v-if="preguntaActual.tipo === 'binaria'" class="binary-options">
+              <label class="binary-option">
+                <input 
+                  type="radio" 
+                  :name="`pregunta_${preguntaActual.id_pregunta}`"
+                  value="si"
+                  v-model="respuestas[preguntaActual.id_pregunta]"
+                />
+                <span class="binary-label">Sí</span>
+              </label>
+              <label class="binary-option">
+                <input 
+                  type="radio" 
+                  :name="`pregunta_${preguntaActual.id_pregunta}`"
+                  value="no"
+                  v-model="respuestas[preguntaActual.id_pregunta]"
+                />
+                <span class="binary-label">No</span>
+              </label>
+            </div>
+
+            <!-- Pregunta de escala (1-5) -->
+            <div v-else-if="preguntaActual.tipo === 'escala'" class="scale-options">
+              <div class="scale-labels">
+                <span>Totalmente en desacuerdo</span>
+                <span>Totalmente de acuerdo</span>
+              </div>
+              <div class="scale-inputs">
+                <label v-for="n in 5" :key="n" class="scale-option">
+                  <input 
+                    type="radio" 
+                    :name="`pregunta_${preguntaActual.id_pregunta}`"
+                    :value="n.toString()"
+                    v-model="respuestas[preguntaActual.id_pregunta]"
+                  />
+                  <span class="scale-number">{{ n }}</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Pregunta de texto libre -->
+            <div v-else-if="preguntaActual.tipo === 'texto'" class="text-input">
+              <textarea 
+                v-model="respuestas[preguntaActual.id_pregunta]"
+                :placeholder="'Escribe tu respuesta aquí...'"
+                class="modern-textarea"
+                rows="4"
+              ></textarea>
+            </div>
+
+            <!-- Pregunta múltiple - VERSIÓN MEJORADA -->
+            <div v-else-if="preguntaActual.tipo === 'multiple'" class="multiple-options">
+              <div class="multiple-note">Selecciona tus géneros musicales favoritos</div>
+              
+              <div class="checkbox-grid">
+                <label 
+                  v-for="genero in generosDisponibles" 
+                  :key="genero" 
+                  class="checkbox-item"
+                >
+                  <input 
+                    type="checkbox" 
+                    :value="genero"
+                    @change="actualizarGenerosSeleccionados"
+                    :checked="generosSeleccionados.includes(genero)"
+                    class="checkbox-input"
+                  />
+                  <span class="checkbox-label">{{ genero }}</span>
+                </label>
+              </div>
+              
+              <!-- Campo oculto que contiene los géneros separados por coma -->
+              <input 
+                type="hidden"
+                v-model="respuestas[preguntaActual.id_pregunta]"
+              />
+              
+              <!-- Mostrar géneros seleccionados -->
+              <div v-if="generosSeleccionados.length > 0" class="selected-genres">
+                <strong>Géneros seleccionados:</strong> {{ generosSeleccionados.join(', ') }}
+              </div>
+            </div>
+          </div>
+
+          <div class="navigation-buttons">
+            <button 
+              v-if="preguntaActualIndex > 0" 
+              @click="preguntaAnterior" 
+              class="nav-btn secondary-btn"
+            >
+              ← Anterior
+            </button>
+            
+            <button 
+              v-if="preguntaActualIndex < preguntas.length - 1" 
+              @click="preguntaSiguiente" 
+              class="nav-btn primary-btn"
+              :disabled="!respuestas[preguntaActual.id_pregunta]"
+            >
+              Siguiente →
+            </button>
+            
+            <button 
+              v-else 
+              @click="completarRegistro" 
+              class="nav-btn primary-btn"
+              :disabled="!respuestas[preguntaActual.id_pregunta]"
+            >
+              Completar Registro ✨
             </button>
           </div>
         </div>
@@ -162,6 +291,12 @@
         <div v-if="error" class="error-message">
           <span class="error-icon">⚠️</span>
           {{ error }}
+        </div>
+
+        <!-- Loading -->
+        <div v-if="loading" class="loading-message">
+          <div class="spinner"></div>
+          <span>{{ loadingMessage }}</span>
         </div>
       </div>
     </div>
@@ -180,6 +315,10 @@ export default {
   data() {
     return {
       modoLogin: true,
+      mostrarPreguntas: false,
+      preguntaActualIndex: 0,
+      loading: false,
+      loadingMessage: '',
       login: { email: '', password: '' },
       registro: {
         nombre: '',
@@ -189,10 +328,200 @@ export default {
         genero: '',
         ubicacion: ''
       },
-      error: ''
+      preguntas: [],
+      respuestas: {},
+      error: '',
+      usuarioRegistradoId: null,
+      
+      // Array de géneros musicales disponibles
+      generosDisponibles: [
+        'Rock',
+        'Pop',
+        'Jazz',
+        'Reggaeton',
+        'Salsa',
+        'Merengue',
+        'Bachata',
+        'Cumbia',
+        'Vallenato',
+        'Hip Hop',
+        'R&B',
+        'Blues',
+        'Country',
+        'Folk',
+        'Electrónica',
+        'Reggae',
+        'Punk',
+        'Metal',
+        'Clásica',
+        'Bossa Nova',
+        'Tango',
+        'Ranchera',
+        'Mariachi'
+      ],
+      
+      // Array para géneros seleccionados
+      generosSeleccionados: []
     };
   },
+  computed: {
+    preguntaActual() {
+      return this.preguntas[this.preguntaActualIndex] || null;
+    },
+    progressPercentage() {
+      if (this.preguntas.length === 0) return 0;
+      return ((this.preguntaActualIndex + 1) / this.preguntas.length) * 100;
+    }
+  },
   methods: {
+    async continueToQuestions() {
+      // Validar datos del registro
+      if (!this.registro.nombre || !this.registro.email || !this.registro.contraseña || 
+          !this.registro.fecha_nacimiento || !this.registro.genero || !this.registro.ubicacion) {
+        this.error = 'Por favor completa todos los campos';
+        return;
+      }
+
+      this.loading = true;
+      this.loadingMessage = 'Cargando preguntas...';
+      this.error = '';
+
+      try {
+        // Cargar preguntas
+        const response = await api.get('/preguntas');
+        this.preguntas = response.data;
+        
+        if (this.preguntas.length === 0) {
+          this.error = 'No hay preguntas disponibles. Contacta al administrador.';
+          this.loading = false;
+          return;
+        }
+
+        // Inicializar respuestas vacías
+        this.respuestas = {};
+        this.preguntas.forEach(pregunta => {
+          this.respuestas[pregunta.id_pregunta] = '';
+        });
+
+        this.mostrarPreguntas = true;
+        this.preguntaActualIndex = 0;
+        
+      } catch (err) {
+        this.error = 'Error al cargar las preguntas. Inténtalo de nuevo.';
+        console.error('Error cargando preguntas:', err);
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    preguntaSiguiente() {
+      if (this.preguntaActualIndex < this.preguntas.length - 1) {
+        this.preguntaActualIndex++;
+      }
+    },
+
+    preguntaAnterior() {
+      if (this.preguntaActualIndex > 0) {
+        this.preguntaActualIndex--;
+      }
+    },
+
+    // Método para actualizar géneros seleccionados
+    actualizarGenerosSeleccionados(event) {
+      const genero = event.target.value;
+      
+      if (event.target.checked) {
+        // Agregar género si no está en la lista
+        if (!this.generosSeleccionados.includes(genero)) {
+          this.generosSeleccionados.push(genero);
+        }
+      } else {
+        // Remover género de la lista
+        const index = this.generosSeleccionados.indexOf(genero);
+        if (index > -1) {
+          this.generosSeleccionados.splice(index, 1);
+        }
+      }
+      
+      // Actualizar el campo de respuesta con géneros separados por coma
+      this.respuestas[this.preguntaActual.id_pregunta] = this.generosSeleccionados.join(', ');
+    },
+    
+    // Método para cargar géneros previamente seleccionados (si existen)
+    cargarGenerosSeleccionados() {
+      const respuestaActual = this.respuestas[this.preguntaActual.id_pregunta];
+      if (respuestaActual) {
+        this.generosSeleccionados = respuestaActual.split(', ').filter(g => g.trim() !== '');
+      } else {
+        this.generosSeleccionados = [];
+      }
+    },
+
+    async completarRegistro() {
+      this.loading = true;
+      this.loadingMessage = 'Creando tu cuenta...';
+      this.error = '';
+
+      try {
+        // Primero registrar el usuario
+        const registroResponse = await api.post('/register', this.registro);
+        this.usuarioRegistradoId = registroResponse.data.user_id;
+
+        this.loadingMessage = 'Guardando tus respuestas...';
+
+        // Luego hacer login para obtener el token
+        const loginResponse = await api.post('/login', {
+          email: this.registro.email,
+          contraseña: this.registro.contraseña
+        });
+
+        const token = loginResponse.data.access_token;
+        localStorage.setItem('token', token);
+        localStorage.setItem('usuario_id', loginResponse.data.user_id);
+
+        // Guardar todas las respuestas
+        const respuestasValidas = Object.entries(this.respuestas)
+          .filter(([preguntaId, respuesta]) => respuesta && respuesta.trim() !== '');
+
+        let respuestasGuardadas = 0;
+        for (const [preguntaId, respuesta] of respuestasValidas) {
+          try {
+            await api.post('/respuestas', {
+              id_usuario: this.usuarioRegistradoId,
+              id_pregunta: parseInt(preguntaId),
+              respuesta: respuesta.toString().trim()
+            });
+            respuestasGuardadas++;
+          } catch (respError) {
+            console.error(`Error guardando respuesta para pregunta ${preguntaId}:`, respError);
+          }
+        }
+
+        // Mostrar mensaje de éxito
+        alert(`¡Registro completado exitosamente! Se guardaron ${respuestasGuardadas} respuestas.`);
+        
+        // Redirigir al usuario
+        await new Promise(resolve => setTimeout(resolve, 500));
+        this.$router.push('/usuario');
+
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Error al completar el registro';
+        console.error('Error en registro completo:', err);
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    getCategoryLabel(categoria) {
+      const labels = {
+        'valores': '💎 Valores',
+        'intereses': '🎯 Intereses',
+        'estilo_vida': '🌟 Estilo de Vida',
+        'personalidad': '🧠 Personalidad'
+      };
+      return labels[categoria] || categoria;
+    },
+
     async registerUser() {
       try {
         await api.post('/register', this.registro);
@@ -203,6 +532,7 @@ export default {
         this.error = err.response?.data?.detail || 'Error al registrar';
       }
     },
+
     async loginUser() {
       try {
         const res = await api.post('/login', {
@@ -222,6 +552,7 @@ export default {
         this.error = err.response?.data?.detail || 'Credenciales incorrectas';
       }
     },
+
     async loginAdmin() {
       try {
         const res = await api.post('/admin/login', {
@@ -233,6 +564,18 @@ export default {
       } catch (err) {
         this.error = err.response?.data?.detail || 'Acceso de admin denegado';
       }
+    }
+  },
+  
+  watch: {
+    // Cargar géneros cuando cambie la pregunta actual
+    preguntaActual: {
+      handler() {
+        if (this.preguntaActual && this.preguntaActual.tipo === 'multiple') {
+          this.cargarGenerosSeleccionados();
+        }
+      },
+      immediate: true
     }
   }
 };
@@ -300,6 +643,13 @@ export default {
   animation: slideUp 0.6s ease-out;
   position: relative;
   z-index: 10;
+  transition: all 0.3s ease;
+}
+
+.login-card.expanded {
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 @keyframes slideUp {
@@ -432,7 +782,8 @@ export default {
 }
 
 .modern-input,
-.modern-select {
+.modern-select,
+.modern-textarea {
   flex: 1;
   padding: 16px 16px 16px 0;
   border: none;
@@ -440,9 +791,27 @@ export default {
   font-size: 16px;
   color: #333;
   outline: none;
+  width: 100%;
 }
 
-.modern-input::placeholder {
+.modern-textarea {
+  resize: vertical;
+  min-height: 80px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 16px;
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.modern-textarea:focus {
+  border-color: #667eea;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+}
+
+.modern-input::placeholder,
+.modern-textarea::placeholder {
   color: #999;
   font-weight: 300;
 }
@@ -461,25 +830,276 @@ export default {
   color: #666;
 }
 
-/* Buttons */
+/* Questions Styles */
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.question-counter {
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 25px;
+  font-weight: 500;
+}
+
+.question-card {
+  background: #f8f9fa;
+  border-radius: 20px;
+  padding: 30px;
+  margin-bottom: 30px;
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.question-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 15px 0;
+  line-height: 1.4;
+}
+
+.question-category {
+  display: inline-block;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 25px;
+}
+
+/* Binary Options */
+.binary-options {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+.binary-option {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 15px 25px;
+  background: white;
+  border: 2px solid #e9ecef;
+  border-radius: 16px;
+  transition: all 0.3s ease;
+  min-width: 120px;
+  justify-content: center;
+}
+
+.binary-option:hover {
+  border-color: #667eea;
+  transform: translateY(-2px);
+}
+
+.binary-option input[type="radio"] {
+  display: none;
+}
+
+.binary-option input[type="radio"]:checked + .binary-label {
+  color: white;
+}
+
+.binary-option:has(input[type="radio"]:checked) {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-color: #667eea;
+  color: white;
+}
+
+.binary-label {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+/* Scale Options */
+.scale-options {
+  text-align: center;
+}
+
+.scale-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+.scale-inputs {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.scale-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  padding: 15px;
+  background: white;
+  border: 2px solid #e9ecef;
+  border-radius: 16px;
+  transition: all 0.3s ease;
+  flex: 1;
+  min-width: 50px;
+}
+
+.scale-option:hover {
+  border-color: #667eea;
+  transform: translateY(-2px);
+}
+
+.scale-option input[type="radio"] {
+  display: none;
+}
+
+.scale-option:has(input[type="radio"]:checked) {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-color: #667eea;
+  color: white;
+}
+
+.scale-number {
+  font-weight: 600;
+  font-size: 18px;
+  transition: color 0.3s ease;
+}
+
+/* Multiple Choice Options */
+.multiple-options {
+  text-align: left;
+}
+
+.multiple-note {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  margin-bottom: 20px;
+  font-weight: 500;
+  border-left: 4px solid #1976d2;
+}
+
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 12px 16px;
+  background: white;
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.checkbox-item:hover {
+  border-color: #667eea;
+  transform: translateY(-1px);
+}
+
+.checkbox-item:has(input[type="checkbox"]:checked) {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-color: #667eea;
+  color: white;
+}
+
+.checkbox-input {
+  margin-right: 10px;
+  width: 18px;
+  height: 18px;
+  accent-color: #667eea;
+}
+
+.checkbox-label {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.selected-genres {
+  background: #f0f8ff;
+  padding: 15px;
+  border-radius: 12px;
+  border-left: 4px solid #667eea;
+  color: #333;
+  font-size: 14px;
+  margin-top: 15px;
+}
+
+/* Navigation Buttons */
+.navigation-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: space-between;
+  margin-top: 30px;
+}
+
+.nav-btn {
+  flex: 1;
+  padding: 16px 32px;
+  border: none;
+  border-radius: 16px;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.nav-btn:not(:disabled):hover {
+  transform: translateY(-2px);
+}
+
+/* Button Groups */
 .button-group {
-  margin: 30px 0 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 30px;
 }
 
 .primary-btn {
-  width: 100%;
-  padding: 16px;
-  border: none;
-  border-radius: 16px;
   background: linear-gradient(135deg, #667eea, #764ba2);
   color: white;
-  font-size: 16px;
+  border: none;
+  padding: 16px 32px;
+  border-radius: 16px;
   font-weight: 600;
+  font-size: 16px;
   cursor: pointer;
+  transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
-  transition: all 0.3s ease;
-  margin-bottom: 12px;
 }
 
 .primary-btn:hover {
@@ -497,7 +1117,7 @@ export default {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
   transition: left 0.5s ease;
 }
 
@@ -505,23 +1125,32 @@ export default {
   left: 100%;
 }
 
-.admin-btn {
-  width: 100%;
-  padding: 12px;
-  border: 2px solid #e9ecef;
-  border-radius: 12px;
+.secondary-btn {
   background: white;
-  color: #666;
+  color: #667eea;
+  border: 2px solid #667eea;
+}
+
+.secondary-btn:hover {
+  background: #667eea;
+  color: white;
+}
+
+.admin-btn {
+  background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
   font-size: 14px;
-  font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
 .admin-btn:hover {
-  border-color: #ffd700;
-  color: #f39c12;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
 }
 
 /* Links */
@@ -533,8 +1162,8 @@ export default {
 .link {
   color: #667eea;
   text-decoration: none;
-  font-size: 14px;
   font-weight: 500;
+  font-size: 14px;
   transition: color 0.3s ease;
 }
 
@@ -543,29 +1172,46 @@ export default {
   text-decoration: underline;
 }
 
-/* Error Message */
+/* Error and Loading Messages */
 .error-message {
-  background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
-  color: white;
-  padding: 12px 16px;
-  border-radius: 12px;
-  margin-top: 20px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
+  gap: 10px;
+  background: #ffebee;
+  color: #c62828;
+  padding: 15px;
+  border-radius: 12px;
+  margin-top: 20px;
+  border-left: 4px solid #c62828;
   font-weight: 500;
-  animation: shake 0.5s ease-in-out;
-}
-
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  75% { transform: translateX(5px); }
 }
 
 .error-icon {
-  font-size: 16px;
+  font-size: 18px;
+}
+
+.loading-message {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  justify-content: center;
+  padding: 20px;
+  color: #667eea;
+  font-weight: 500;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e9ecef;
+  border-top: 2px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* Bottom Decoration */
@@ -584,47 +1230,182 @@ export default {
   left: 0;
   width: 100%;
   height: 100px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,52.47V0Z' opacity='.25' fill='%23FFFFFF'%3E%3C/path%3E%3Cpath d='M0,0V15.81C13,36.92,27.64,56.86,47.69,72.05,99.41,111.27,165,111,224.58,91.58c31.15-10.15,60.09-26.07,89.67-39.8,40.92-19,84.73-46,130.83-49.67,36.26-2.85,70.9,9.42,98.6,31.56,31.77,25.39,62.32,62,103.63,73,40.44,10.79,81.35-6.69,119.13-24.28s75.16-39,116.92-43.05c59.73-5.85,113.28,22.88,168.9,38.84,30.2,8.66,59,6.17,87.09-7.5,22.43-10.89,48-26.93,60.65-49.24V0Z' opacity='.5' fill='%23FFFFFF'%3E%3C/path%3E%3Cpath d='M0,0V5.63C149.93,59,314.09,71.32,475.83,42.57c43-7.64,84.23-20.12,127.61-26.46,59-8.63,112.48,12.24,165.56,35.4C827.93,77.22,886,95.24,951.2,90c86.53-7,172.46-45.71,248.8-84.81V0Z' fill='%23FFFFFF'%3E%3C/path%3E%3C/svg%3E") no-repeat;
-  background-size: cover;
-  opacity: 0.3;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z' fill='%23ffffff' fill-opacity='0.1'/%3E%3C/svg%3E") repeat-x;
+  background-size: 1200px 100px;
+  animation: wave 10s ease-in-out infinite;
 }
 
-/* Responsive */
+@keyframes wave {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(-50px); }
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
+  .login-container {
+    padding: 10px;
+  }
+  
   .login-card {
     padding: 30px 20px;
     margin: 10px;
-    border-radius: 20px;
+  }
+  
+  .login-card.expanded {
+    max-width: 100%;
+    margin: 0;
+    border-radius: 0;
+    min-height: 100vh;
   }
   
   .app-title {
     font-size: 28px;
   }
   
-  .input-wrapper {
-    border-radius: 12px;
-  }
-  
-  .primary-btn {
-    border-radius: 12px;
-  }
-}
-
-@media (max-width: 480px) {
-  .login-container {
-    padding: 10px;
-  }
-  
-  .login-card {
-    padding: 20px 15px;
-  }
-  
   .heart-logo {
     font-size: 40px;
   }
   
+  .question-card {
+    padding: 20px;
+  }
+  
+  .binary-options {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .binary-option {
+    min-width: auto;
+  }
+  
+  .scale-inputs {
+    gap: 5px;
+  }
+  
+  .scale-option {
+    padding: 10px;
+    min-width: 40px;
+  }
+  
+  .checkbox-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .navigation-buttons {
+    flex-direction: column;
+  }
+  
+  .toggle-buttons {
+    margin-bottom: 20px;
+  }
+  
+  .scale-labels {
+    font-size: 12px;
+  }
+  
+  .question-title {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-card {
+    padding: 20px 15px;
+  }
+  
   .app-title {
     font-size: 24px;
+  }
+  
+  .heart-logo {
+    font-size: 36px;
+  }
+  
+  .question-card {
+    padding: 15px;
+  }
+  
+  .primary-btn, .nav-btn {
+    padding: 14px 20px;
+    font-size: 14px;
+  }
+  
+  .scale-inputs {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .scale-option {
+    flex: 0 0 calc(20% - 8px);
+    min-width: 35px;
+    padding: 8px;
+  }
+  
+  .scale-number {
+    font-size: 16px;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .heart {
+    animation: none;
+  }
+  
+  .wave {
+    animation: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .login-card {
+    border: 2px solid #000;
+  }
+  
+  .input-wrapper {
+    border: 2px solid #000;
+  }
+  
+  .primary-btn {
+    border: 2px solid #000;
+  }
+}
+
+/* Focus styles for better accessibility */
+.modern-input:focus,
+.modern-select:focus,
+.modern-textarea:focus,
+.primary-btn:focus,
+.secondary-btn:focus,
+.admin-btn:focus,
+.nav-btn:focus,
+.toggle-btn:focus {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}
+
+/* Print styles */
+@media print {
+  .login-container {
+    background: white;
+  }
+  
+  .background-hearts,
+  .bottom-decoration {
+    display: none;
+  }
+  
+  .login-card {
+    box-shadow: none;
+    border: 1px solid #ccc;
   }
 }
 </style>
