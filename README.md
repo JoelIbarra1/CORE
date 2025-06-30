@@ -14,8 +14,7 @@ Una aplicación de citas inteligente que calcula la compatibilidad entre usuario
 - [Algoritmo de Compatibilidad](#algoritmo-de-compatibilidad)
 - [Autenticación](#autenticación)
 - [Base de Datos](#base-de-datos)
-- [Contribución](#contribución)
-- [Licencia](#licencia)
+
 
 ## Características
 
